@@ -62,10 +62,9 @@ import java.nio.channels.FileLock;
 /*
  * @author Luis Lazaro
  */
-public class FTPSource extends AbstractSource implements Configurable, PollableSource, Serializable {
+public class DirectorySource extends AbstractSource implements Configurable, PollableSource, Serializable {
     
-    private static final Logger log = LoggerFactory.getLogger(FTPSource.class);
-    private FTPSourceUtils ftpSourceUtils;
+    private static final Logger log = LoggerFactory.getLogger(DirectorySource.class);
     private HashMap<File, Long> sizeFileList = new HashMap<>();
     private HashMap<File, Long> markFileList = new HashMap<>();
     private HashMap<File, Boolean> channelList = new HashMap<>();
