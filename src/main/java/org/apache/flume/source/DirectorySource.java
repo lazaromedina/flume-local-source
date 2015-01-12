@@ -60,12 +60,12 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
 /*
- * @author Luis Lazaro
+ * @author Luis Lazaro 
+enero 2015
  */
-public class FTPSource extends AbstractSource implements Configurable, PollableSource, Serializable {
+public class DirectorySource extends AbstractSource implements Configurable, PollableSource, Serializable {
     
-    private static final Logger log = LoggerFactory.getLogger(FTPSource.class);
-    private FTPSourceUtils ftpSourceUtils;
+    private static final Logger log = LoggerFactory.getLogger(DirectorySource.class);
     private HashMap<File, Long> sizeFileList = new HashMap<>();
     private HashMap<File, Long> markFileList = new HashMap<>();
     private HashMap<File, Boolean> channelList = new HashMap<>();
@@ -75,10 +75,6 @@ public class FTPSource extends AbstractSource implements Configurable, PollableS
     @Override
     public void configure(Context context) {            
         log.info("Reading and processing configuration values for source " + getName());
-        ftpSourceUtils = new FTPSourceUtils(context);
-        if (ftpSourceUtils.connectToserver()){
-            log.info("Establishing connection to host " + ftpSourceUtils.getServer() + " for source  "  + getName());
-        }
         log.info("Loading previous flumed data.....  " + getName());
         try {
                 sizeFileList = loadMap("1hasmapS.ser");
@@ -111,10 +107,9 @@ public class FTPSource extends AbstractSource implements Configurable, PollableS
     public PollableSource.Status process() throws EventDeliveryException {
        
        discoverElements();
-
         try 
         {  
-            Thread.sleep(this.ftpSourceUtils.getRunDiscoverDelay());				
+            Thread.sleep(10000);				
             return PollableSource.Status.READY;     //source was successfully able to generate events
         } catch(InterruptedException inte){
             inte.printStackTrace();
@@ -146,13 +141,7 @@ public class FTPSource extends AbstractSource implements Configurable, PollableS
                 log.info("save channelList :" + channelList.get(file));
             }
             log.info("Stopping sql source {} ...", getName());
-            try { 
-                 ftpSourceUtils.getFtpClient().logout();
-                 ftpSourceUtils.getFtpClient().disconnect();
-            } catch (IOException ioe) {
-                 super.stop();
-                 ioe.printStackTrace();
-            }
+            
             super.stop();
     }
     
@@ -176,7 +165,7 @@ public class FTPSource extends AbstractSource implements Configurable, PollableS
     */
     public void discoverElements(){
         try {  
-            Path start = Paths.get(ftpSourceUtils.getFtpClient().printWorkingDirectory());  
+            Path start = Paths.get("/home/mortadelo/ftp");  
   
             Files.walkFileTree(start, new SimpleFileVisitor<Path>() {  
                 @Override  
