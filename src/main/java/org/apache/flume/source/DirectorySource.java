@@ -59,10 +59,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
-/*
- * @author Luis Lazaro 
-enero 2015
+/**
+ * 
+ * @author Luis Lázaro <lalazaro@keedio.com>
  */
+
 public class DirectorySource extends AbstractSource implements Configurable, PollableSource, Serializable {
     
     private SourceUtils sourceUtils;
@@ -98,7 +99,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
        discoverElements();
         try 
         {  
-            Thread.sleep(10000);				
+            Thread.sleep(sourceUtils.getDelay());				
             return PollableSource.Status.READY;     //source was successfully able to generate events
         } catch(InterruptedException inte){
             inte.printStackTrace();

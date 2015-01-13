@@ -57,5 +57,13 @@ public class SourceUtils {
     public void setFolder(String newFolder){
         folder = newFolder;
     }
+    
+    
+    /*
+    return int, ms till next pooll
+    */
+    public int getDelay(){
+        return runDiscoverDelay;
+    }
 
 }
