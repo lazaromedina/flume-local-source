@@ -65,6 +65,7 @@ enero 2015
  */
 public class DirectorySource extends AbstractSource implements Configurable, PollableSource, Serializable {
     
+    private SourceUtils sourceUtils;
     private static final Logger log = LoggerFactory.getLogger(DirectorySource.class);
     private HashMap<File, Long> sizeFileList = new HashMap<>();
     private HashMap<File, Long> markFileList = new HashMap<>();
@@ -74,25 +75,13 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
        
     @Override
     public void configure(Context context) {            
+        sourceUtils = new SourceUtils(context);
         log.info("Reading and processing configuration values for source " + getName());
         log.info("Loading previous flumed data.....  " + getName());
         try {
                 sizeFileList = loadMap("1hasmapS.ser");
                 markFileList = loadMap("2hasmapS.ser");
                 channelList = loadMapB("hasmapB.ser");
-                
-                for (File file : sizeFileList.keySet()){
-                log.info("cargado sizeFileList :" + sizeFileList.get(file));
-            }
-                
-                for (File file : markFileList.keySet()){
-                log.info("cargado markFileList :" + markFileList.get(file));
-            }
-                
-                for (File file : channelList.keySet()){
-                log.info("cargado channelList :" + channelList.get(file));
-            }
-                
                 closeChannel(channelList);
                 
                 } catch (ClassNotFoundException | IOException e){
@@ -129,19 +118,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
             saveMap(sizeFileList, 1);
             saveMap(markFileList, 2);
             saveMapB(channelList);
-            for (File file : sizeFileList.keySet()){
-                log.info("save sizeFileList :" + sizeFileList.get(file));
-            }
-                
-                for (File file : markFileList.keySet()){
-                log.info("save markFileList :" + markFileList.get(file));
-            }
-                
-                for (File file : channelList.keySet()){
-                log.info("save channelList :" + channelList.get(file));
-            }
             log.info("Stopping sql source {} ...", getName());
-            
             super.stop();
     }
     
@@ -165,7 +142,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
     */
     public void discoverElements(){
         try {  
-            Path start = Paths.get("/home/mortadelo/ftp");  
+            Path start = Paths.get(sourceUtils.getFolder());  
   
             Files.walkFileTree(start, new SimpleFileVisitor<Path>() {  
                 @Override  
@@ -179,17 +156,17 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
                                long size = ranAcFile.length() - sizeFileList.get(file.toFile());
                                if (size > 0) {
                                    sizeFileList.put(file.toFile(), ranAcFile.length());
-                                   log.info("Modified: " + file.getFileName() + "," + attributes.fileKey() + " ," + sizeFileList.size() +  " ,size: " + size +  " , Actual "  + ranAcFile.length() + ", Guardado " + sizeFileList.get(file.toFile()) + ", marca " + markFileList.get(file.toFile()));
+                                   log.info("Modified: " + file.getFileName()  + " ," + sizeFileList.size());
                                    ReadFileWithFixedSizeBuffer(ranAcFile, file.toFile());
                                    
                                     
                                } else if (size == 0 ){ //known & NOT modified
                                    if (markFileList.get(file.toFile()) < ranAcFile.length() ){
                                        if (channelList.get(file.toFile())){
-                                           log.info("channel open: " + file.getFileName()+ ", " + markFileList.get(file.toFile()) + " of  " + ranAcFile.length() + ", Guardado " + sizeFileList.get(file.toFile()) + ", marca " + markFileList.get(file.toFile()) );
+                                           log.info("channel open: " + file.getFileName());
                                            ranAcFile.close(); 
                                        } else {
-                                           log.info("channel closed: " + file.getFileName()+ ", " + markFileList.get(file.toFile()) + " of  " + ranAcFile.length() + ", Guardado " + sizeFileList.get(file.toFile()) + ", marca " + markFileList.get(file.toFile()) );
+                                           log.info("channel closed: " + file.getFileName());
                                           
                                            Thread threadReFile = new Thread( new Runnable(){
                                             @Override
@@ -221,7 +198,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
                                     final RandomAccessFile ranAcFile = new RandomAccessFile(file.toFile(), "r");
                                     sizeFileList.put(file.toFile(), ranAcFile.length());
                                     channelList.put(file.toFile(),true);
-                                    log.info("discovered: " + file.getFileName() + "," + attributes.fileKey() + " ," + sizeFileList.size() + " , Actual "  + ranAcFile.length() + ", guardo Ac " + sizeFileList.get(file.toFile()));
+                                    log.info("discovered: " + file.getFileName() + " ," + sizeFileList.size() );
                                     Thread threadNewFile = new Thread( new Runnable(){
                                     @Override
                                     public void run(){
@@ -293,6 +270,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
     /*
     @void Serialize hashmap
     */
+    
     public void saveMapB(HashMap<File, Boolean> map){
         try { 
             FileOutputStream fileOut = new FileOutputStream("hasmapB.ser");
