@@ -64,7 +64,7 @@ import java.nio.channels.FileLock;
  * @author Luis Lázaro <lalazaro@keedio.com>
  */
 
-public class DirectorySource extends AbstractSource implements Configurable, PollableSource, Serializable {
+public class DirectorySource extends AbstractSource implements Configurable, PollableSource {
     
     private SourceUtils sourceUtils;
     private static final Logger log = LoggerFactory.getLogger(DirectorySource.class);
@@ -134,7 +134,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
         headers.put("timestamp", String.valueOf(System.currentTimeMillis()));
         event.setBody(message);
         event.setHeaders(headers);
-        getChannelProcessor().processEvent(event);
+        getChannelProcessor().processEvent(event); //write event to channel
     }
     
     
