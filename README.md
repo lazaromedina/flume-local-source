@@ -19,9 +19,13 @@ agent.sources.r1.name.folder = ../directory
 agent.sources.r1.run.discover.delay=10000
 
 agent.sinks.k1.type = logger
+
 agent.channels.c1.type = memory
+
 agent.channels.c1.capacity = 1000
+
 agent.channels.c1.transactionCapacity = 100
+
 agent.sinks.k1.channel = c1
 
 
