@@ -5,9 +5,11 @@ Local files in directories are source of events for flume. Is intended for huge 
 Apache-flume ng mayor to 1.4.0
 
 ##Flume configuration file
-ACTIVE LIST
+ACTIVE LIST 
 agent.sources = r1
+
 agent.sinks = k1
+
 agent.channels = c1 
 agent.sources.r1.type = org.apache.flume.source.DirectorySource
 agent.sources.r1.name.folder = ../directory
