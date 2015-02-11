@@ -1,1 +1,4 @@
 /target/
+/JUnitApp/nbproject/private/
+/JUnitApp/build/
+/JUnitApp/dist/

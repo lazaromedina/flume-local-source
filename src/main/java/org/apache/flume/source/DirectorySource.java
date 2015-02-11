@@ -59,11 +59,12 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
-/*
- * @author Luis Lazaro 
-enero 2015
+/**
+ * 
+ * @author Luis Lázaro <lalazaro@keedio.com>
  */
-public class DirectorySource extends AbstractSource implements Configurable, PollableSource, Serializable {
+
+public class DirectorySource extends AbstractSource implements Configurable, PollableSource {
     
     private SourceUtils sourceUtils;
     private static final Logger log = LoggerFactory.getLogger(DirectorySource.class);
@@ -71,18 +72,18 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
     private HashMap<File, Long> markFileList = new HashMap<>();
     private HashMap<File, Boolean> channelList = new HashMap<>();
     private HashSet<File> deletedFiles = new HashSet<>();
-    private final int chunkSize = 1024;
+    private int chunkSize = 1024;
        
-    @Override
+   @Override
     public void configure(Context context) {            
-        sourceUtils = new SourceUtils(context);
+        setSourceUtils(new SourceUtils(context));
         log.info("Reading and processing configuration values for source " + getName());
         log.info("Loading previous flumed data.....  " + getName());
         try {
-                sizeFileList = loadMap("1hasmapS.ser");
-                markFileList = loadMap("2hasmapS.ser");
-                channelList = loadMapB("hasmapB.ser");
-                closeChannel(channelList);
+                setSizeFileList(loadMap("1hasmapS.ser"));
+                setMarkFileList(loadMap("2hasmapS.ser"));
+                setChannelList(loadMapB("hasmapB.ser"));
+                closeChannel(getChannelList());
                 
                 } catch (ClassNotFoundException | IOException e){
                     e.printStackTrace();
@@ -98,7 +99,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
        discoverElements();
         try 
         {  
-            Thread.sleep(10000);				
+            Thread.sleep(getSourceUtils().getRunDiscoverDelay());				
             return PollableSource.Status.READY;     //source was successfully able to generate events
         } catch(InterruptedException inte){
             inte.printStackTrace();
@@ -115,9 +116,9 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
 
     @Override
     public void stop() {
-            saveMap(sizeFileList, 1);
-            saveMap(markFileList, 2);
-            saveMapB(channelList);
+            saveMap(getSizeFileList(), 1);
+            saveMap(getMarkFileList(), 2);
+            saveMapB(getChannelList());
             log.info("Stopping sql source {} ...", getName());
             super.stop();
     }
@@ -133,7 +134,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
         headers.put("timestamp", String.valueOf(System.currentTimeMillis()));
         event.setBody(message);
         event.setHeaders(headers);
-        getChannelProcessor().processEvent(event);
+        getChannelProcessor().processEvent(event); //write event to channel
     }
     
     
@@ -142,27 +143,27 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
     */
     public void discoverElements(){
         try {  
-            Path start = Paths.get(sourceUtils.getFolder());  
+            Path start = Paths.get(getSourceUtils().getFolder());  
   
             Files.walkFileTree(start, new SimpleFileVisitor<Path>() {  
                 @Override  
                 public FileVisitResult visitFile(final Path file, BasicFileAttributes attributes) throws IOException {
                         
-                         cleanList(sizeFileList);
-                         cleanListMirror(markFileList);
-                         if (sizeFileList.containsKey(file.toFile())){                              // known file
+                         cleanList(getSizeFileList());
+                         cleanListMirror(getMarkFileList());
+                         if (getSizeFileList().containsKey(file.toFile())){                              // known file
                                final RandomAccessFile ranAcFile = new RandomAccessFile(file.toFile(), "r");                             
-                               ranAcFile.seek(sizeFileList.get(file.toFile()));
-                               long size = ranAcFile.length() - sizeFileList.get(file.toFile());
+                               ranAcFile.seek(getSizeFileList().get(file.toFile()));
+                               long size = ranAcFile.length() - getSizeFileList().get(file.toFile());
                                if (size > 0) {
-                                   sizeFileList.put(file.toFile(), ranAcFile.length());
-                                   log.info("Modified: " + file.getFileName()  + " ," + sizeFileList.size());
+                                   getSizeFileList().put(file.toFile(), ranAcFile.length());
+                                   log.info("Modified: " + file.getFileName()  + " ," + getSizeFileList().size());
                                    ReadFileWithFixedSizeBuffer(ranAcFile, file.toFile());
                                    
                                     
                                } else if (size == 0 ){ //known & NOT modified
-                                   if (markFileList.get(file.toFile()) < ranAcFile.length() ){
-                                       if (channelList.get(file.toFile())){
+                                   if (getMarkFileList().get(file.toFile()) < ranAcFile.length() ){
+                                       if (getChannelList().get(file.toFile())){
                                            log.info("channel open: " + file.getFileName());
                                            ranAcFile.close(); 
                                        } else {
@@ -172,9 +173,9 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
                                             @Override
                                             public void run(){
                                                 try {
-                                                    channelList.put(file.toFile(),true);
+                                                    getChannelList().put(file.toFile(),true);
                                                     final RandomAccessFile ranAcFile = new RandomAccessFile(file.toFile(), "r");
-                                                    ranAcFile.seek(markFileList.get(file.toFile()));
+                                                    ranAcFile.seek(getMarkFileList().get(file.toFile()));
                                                     ReadFileWithFixedSizeBuffer(ranAcFile, file.toFile());
                                                     } catch(IOException e) {
                                                         e.printStackTrace();
@@ -189,16 +190,16 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
                                    ranAcFile.close();
                                } else if (size < 0) { //known &  modified from offset 0
                                    ranAcFile.seek(0);
-                                   sizeFileList.put(file.toFile(), ranAcFile.length());
-                                   log.info("full modified: " + file.getFileName() + "," + attributes.fileKey() + " ," + sizeFileList.size());
+                                   getSizeFileList().put(file.toFile(), ranAcFile.length());
+                                   log.info("full modified: " + file.getFileName() + "," + attributes.fileKey() + " ," + getSizeFileList().size());
                                    ReadFileWithFixedSizeBuffer(ranAcFile, file.toFile());
                                }
                                
                         } else {    //new File
                                     final RandomAccessFile ranAcFile = new RandomAccessFile(file.toFile(), "r");
-                                    sizeFileList.put(file.toFile(), ranAcFile.length());
-                                    channelList.put(file.toFile(),true);
-                                    log.info("discovered: " + file.getFileName() + " ," + sizeFileList.size() );
+                                    getSizeFileList().put(file.toFile(), ranAcFile.length());
+                                    getChannelList().put(file.toFile(),true);
+                                    log.info("discovered: " + file.getFileName() + " ," + getSizeFileList().size() );
                                     Thread threadNewFile = new Thread( new Runnable(){
                                     @Override
                                     public void run(){
@@ -235,7 +236,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
           final File file = iter.next();
           if (!(file.exists())){ 
               iter.remove();
-              deletedFiles.add(file);
+                getDeletedFiles().add(file);
           }
         }
     }
@@ -244,7 +245,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
     @void. Avoid double concurrent access
     */
     public void cleanListMirror(HashMap<File,Long> map){
-        for (File file: deletedFiles){
+        for (File file: getDeletedFiles()){
             map.remove(file);
         }
     }
@@ -316,11 +317,11 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
     */
     public void ReadFileWithFixedSizeBuffer(RandomAccessFile aFile) throws IOException{
         FileChannel inChannel = aFile.getChannel();
-        ByteBuffer buffer = ByteBuffer.allocateDirect(chunkSize);
+        ByteBuffer buffer = ByteBuffer.allocateDirect(getChunkSize());
             while(inChannel.read(buffer) > 0)
             {
-                FileLock lock = inChannel.lock(inChannel.position(), chunkSize, true);
-                byte[] data = new byte[chunkSize];
+                FileLock lock = inChannel.lock(inChannel.position(), getChunkSize(), true);
+                byte[] data = new byte[getChunkSize()];
                 buffer.flip(); //alias for buffer.limit(buffer.position()).position(0)
                 for (int i = 0;  i < buffer.limit();  i++)
                 {
@@ -340,12 +341,12 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
     */
     public void ReadFileWithFixedSizeBuffer(RandomAccessFile aFile, File file) throws IOException{
         FileChannel inChannel = aFile.getChannel();
-        ByteBuffer buffer = ByteBuffer.allocateDirect(chunkSize);
+        ByteBuffer buffer = ByteBuffer.allocateDirect(getChunkSize());
             while(inChannel.read(buffer) > 0)
             {
-                markFileList.put(file,inChannel.position());                
-                FileLock lock = inChannel.lock(inChannel.position(), chunkSize, true);
-                byte[] data = new byte[chunkSize];
+                getMarkFileList().put(file,inChannel.position());                
+                FileLock lock = inChannel.lock(inChannel.position(), getChunkSize(), true);
+                byte[] data = new byte[getChunkSize()];
                 buffer.flip(); //alias for buffer.limit(buffer.position()).position(0)
                 for (int i = 0;  i < buffer.limit();  i++)
                 {
@@ -356,7 +357,7 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
                 lock.release();
             }
             
-        channelList.put(file,false);    
+        getChannelList().put(file,false);    
         inChannel.close();
         aFile.close();
     }
@@ -372,6 +373,90 @@ public class DirectorySource extends AbstractSource implements Configurable, Pol
               map.put(file, Boolean.FALSE);
           }
         }
+    }
+
+    /**
+     * @return the sourceUtils
+     */
+    public SourceUtils getSourceUtils() {
+        return sourceUtils;
+    }
+
+    /**
+     * @param sourceUtils the sourceUtils to set
+     */
+    public void setSourceUtils(SourceUtils sourceUtils) {
+        this.sourceUtils = sourceUtils;
+    }
+
+    /**
+     * @return the sizeFileList
+     */
+    public HashMap<File, Long> getSizeFileList() {
+        return sizeFileList;
+    }
+
+    /**
+     * @param sizeFileList the sizeFileList to set
+     */
+    public void setSizeFileList(HashMap<File, Long> sizeFileList) {
+        this.sizeFileList = sizeFileList;
+    }
+
+    /**
+     * @return the markFileList
+     */
+    public HashMap<File, Long> getMarkFileList() {
+        return markFileList;
+    }
+
+    /**
+     * @param markFileList the markFileList to set
+     */
+    public void setMarkFileList(HashMap<File, Long> markFileList) {
+        this.markFileList = markFileList;
+    }
+
+    /**
+     * @return the channelList
+     */
+    public HashMap<File, Boolean> getChannelList() {
+        return channelList;
+    }
+
+    /**
+     * @param channelList the channelList to set
+     */
+    public void setChannelList(HashMap<File, Boolean> channelList) {
+        this.channelList = channelList;
+    }
+
+    /**
+     * @return the deletedFiles
+     */
+    public HashSet<File> getDeletedFiles() {
+        return deletedFiles;
+    }
+
+    /**
+     * @param deletedFiles the deletedFiles to set
+     */
+    public void setDeletedFiles(HashSet<File> deletedFiles) {
+        this.deletedFiles = deletedFiles;
+    }
+
+    /**
+     * @return the chunkSize
+     */
+    public int getChunkSize() {
+        return chunkSize;
+    }
+
+    /**
+     * @param chunkSize the chunkSize to set
+     */
+    public void setChunkSize(int chunkSize) {
+        this.chunkSize = chunkSize;
     }
     
 }
