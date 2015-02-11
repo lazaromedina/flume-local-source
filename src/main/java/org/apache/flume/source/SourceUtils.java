@@ -42,7 +42,7 @@ public class SourceUtils {
         runDiscoverDelay = context.getInteger("run.discover.delay");
     }
     
-    
+    public SourceUtils(){};
     /*
     @return String, folder for files
     */
@@ -51,19 +51,26 @@ public class SourceUtils {
     }
     
     
-    /*
-    @void set folder for files
-    */
-    public void setFolder(String newFolder){
-        folder = newFolder;
-    }
-    
-    
-    /*
-    return int, ms till next pooll
-    */
-    public int getDelay(){
+
+    /**
+     * @return the runDiscoverDelay
+     */
+    public int getRunDiscoverDelay() {
         return runDiscoverDelay;
+    }
+
+    /**
+     * @param folder the folder to set
+     */
+    public void setFolder(String folder) {
+        this.folder = folder;
+    }
+
+    /**
+     * @param runDiscoverDelay the runDiscoverDelay to set
+     */
+    public void setRunDiscoverDelay(int runDiscoverDelay) {
+        this.runDiscoverDelay = runDiscoverDelay;
     }
 
 }
